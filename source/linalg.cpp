@@ -25,6 +25,19 @@ namespace linalg {
     m_capacity(other.size())
     {std :: copy(other.begin(), other.end(), m_ptr);}
 
+    Matrix::Matrix(Matrix&& other) noexcept
+    : m_ptr(other.m_ptr)
+    , m_rows(other.m_rows)
+    , m_columns(other.m_columns)
+    , m_capacity(other.m_capacity)
+    {
+        other.m_ptr = nullptr;
+        other.m_rows = 0;
+        other.m_columns = 0;
+        other.m_capacity = 0;
+    }
+    //копируем плоя и обнуляем источники
+
 
 }
 
