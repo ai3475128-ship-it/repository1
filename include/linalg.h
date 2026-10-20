@@ -8,6 +8,7 @@ namespace linalg {
         Matrix() noexcept = default;//дефолтный конструктор(компилятор сам сощдает пустую матрицу); noexcept=без исключений
         explicit Matrix(std::size_t rows); //explicit не позволяет случиться невозможным преобразованиям(число в матрицу)
         Matrix(std::size_t rows, std :: size_t columns);
+        Matrix(const Matrix& other);
         ~Matrix();
 
         bool empty() const noexcept { return m_rows == 0 || m_columns == 0; }

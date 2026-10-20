@@ -1,7 +1,9 @@
 #include "linalg.h"
 
+#include <algorithm>
+
 namespace linalg {
-    Matrix::Matrix(std::size_t rows) :
+    Matrix::Matrix(std::size_t rows):
         Matrix(rows,1) {
 
     }
@@ -16,5 +18,13 @@ namespace linalg {
     Matrix::~Matrix() {
         delete[] m_ptr;
     }
+    Matrix::Matrix(const Matrix& other)://выделяем сразу под актуальное количество элементов
+    m_ptr(new double[other.size()]),
+    m_rows(other.m_rows),
+    m_columns(other.m_columns),
+    m_capacity(other.size())
+    {std :: copy(other.begin(), other.end(), m_ptr);}
+
+
 }
 
