@@ -9,6 +9,12 @@ namespace linalg {
         explicit Matrix(std::size_t rows); //explicit не позволяет случиться невозможным преобразованиям(число в матрицу)
         Matrix(std::size_t rows, std :: size_t columns);
         ~Matrix();
+
+        bool empty() const noexcept { return m_rows == 0 || m_columns == 0; }
+        std::size_t rows() const noexcept { return m_rows; }
+        std::size_t columns() const noexcept { return m_columns; }
+        std::size_t capacity() const noexcept { return m_capacity; }
+        std::size_t size() const noexcept { return m_rows * m_columns; }
         //публичной для доступности конструктора и деструктора для пользователя
     private:
         double *m_ptr = nullptr;
