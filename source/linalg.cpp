@@ -54,6 +54,24 @@ namespace linalg {
             out = std::copy(row.begin(), row.end(), out);
         }
     }
+    Matrix& Matrix::operator=(const Matrix& other)
+    {
+        if (this == &other)
+            return *this;
+
+        if (other.size() > m_capacity)
+        {
+            double* new_ptr = new double[other.size()];
+            delete[] m_ptr;
+            m_ptr = new_ptr;
+            m_capacity = other.size();
+        }
+
+        m_rows = other.m_rows;
+        m_columns = other.m_columns;
+        std::copy(other.begin(), other.end(), m_ptr);
+        return *this;
+    }
 
 
 }
