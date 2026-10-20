@@ -28,6 +28,8 @@ namespace linalg {
         const double *begin() const noexcept {return m_ptr;}
         const double *end() const noexcept {return m_ptr + size();}
         //const *double* нужен для const Matrix, где элементы менять нельзя
+        void reserve(std::size_t n);
+        void clear() noexcept { m_rows = 0; m_columns = 0; }
     private:
         double *m_ptr = nullptr;
         std :: size_t m_rows = 0;

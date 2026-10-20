@@ -90,6 +90,17 @@ namespace linalg {
         other.m_capacity = 0;
         return *this;
     }
+    void Matrix::reserve(std::size_t n)
+    {
+        if (n <= m_capacity)
+            return;
+
+        double* new_ptr = new double[n];
+        std::copy(begin(), end(), new_ptr);
+        delete[] m_ptr;
+        m_ptr = new_ptr;
+        m_capacity = n;
+    }
 
 
 }
