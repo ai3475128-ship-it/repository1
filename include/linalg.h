@@ -14,6 +14,7 @@ namespace linalg {
         Matrix(std::initializer_list<double> list);
         Matrix(std::initializer_list<std::initializer_list<double>> list);
         Matrix& operator=(const Matrix& other);
+        Matrix& operator=(Matrix&& other) noexcept;
         ~Matrix();
 
         bool empty() const noexcept { return m_rows == 0 || m_columns == 0; }

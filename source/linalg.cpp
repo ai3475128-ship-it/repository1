@@ -72,6 +72,24 @@ namespace linalg {
         std::copy(other.begin(), other.end(), m_ptr);
         return *this;
     }
+    Matrix& Matrix::operator=(Matrix&& other) noexcept
+    {
+        if (this == &other)
+            return *this;
+
+        delete[] m_ptr;
+
+        m_ptr = other.m_ptr;
+        m_rows = other.m_rows;
+        m_columns = other.m_columns;
+        m_capacity = other.m_capacity;
+
+        other.m_ptr = nullptr;
+        other.m_rows = 0;
+        other.m_columns = 0;
+        other.m_capacity = 0;
+        return *this;
+    }
 
 
 }
