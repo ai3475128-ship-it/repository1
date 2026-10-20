@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <initializer_list>
 
 //определяем класс в linalg
 namespace linalg {
@@ -10,6 +11,8 @@ namespace linalg {
         Matrix(std::size_t rows, std :: size_t columns);
         Matrix(const Matrix& other);
         Matrix(Matrix&& other) noexcept; //rvalue ссылка. привязана к временным объектам
+        Matrix(std::initializer_list<double> list);
+        Matrix(std::initializer_list<std::initializer_list<double>> list);
         ~Matrix();
 
         bool empty() const noexcept { return m_rows == 0 || m_columns == 0; }

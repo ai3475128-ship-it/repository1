@@ -37,6 +37,23 @@ namespace linalg {
         other.m_capacity = 0;
     }
     //копируем плоя и обнуляем источники
+    Matrix::Matrix(std::initializer_list<double> list)
+        : Matrix(list.size(), 1)
+    {
+        std::copy(list.begin(), list.end(), m_ptr);
+    }
+
+    Matrix::Matrix(std::initializer_list<std::initializer_list<double>> list)
+        : Matrix(list.size(), list.size() == 0 ? 0 : list.begin()->size())
+    {
+        double* out = m_ptr;
+        for (const auto& row : list)
+        {
+            if (row.size() != m_columns)
+                throw std::runtime_error("Matrix: rows have different lengths");
+            out = std::copy(row.begin(), row.end(), out);
+        }
+    }
 
 
 }
