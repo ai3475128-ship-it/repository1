@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include <utility>
+
 namespace linalg {
     Matrix::Matrix(std::size_t rows):
         Matrix(rows,1) {
@@ -101,7 +103,7 @@ namespace linalg {
         m_ptr = new_ptr;
         m_capacity = n;
     }
-    void Matrix::reshape(std::size_t rows, std::size_t columns)
+    void Matrix::reshape(std::size_t rows, std::size_t columns) // меняем строки и столбцы, сели помещается, если нет, перевыделяем память
     {
         const std::size_t n = rows * columns;
         if (n > m_capacity)
@@ -115,7 +117,7 @@ namespace linalg {
         m_columns = columns;
     }
 
-    void Matrix::shrink_to_fit()
+    void Matrix::shrink_to_fit() // выделяем память ровно на size() элементов, копируем элементы, очищаем старый, обновляем указател и вместимость
     {
         const std::size_t n = size();
         if (n == m_capacity)
@@ -127,7 +129,18 @@ namespace linalg {
         m_ptr = new_ptr;
         m_capacity = n;
     }
+    void Matrix::swap(Matrix& other) noexcept
+    {
+        std::swap(m_ptr, other.m_ptr);
+        std::swap(m_rows, other.m_rows);
+        std::swap(m_columns, other.m_columns);
+        std::swap(m_capacity, other.m_capacity);
+    }
 
+    void swap(Matrix& a, Matrix& b) noexcept
+    {
+        a.swap(b);
+    }
 
 }
 

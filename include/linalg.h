@@ -32,6 +32,7 @@ namespace linalg {
         void reshape(std::size_t rows, std::size_t columns);
         void clear() noexcept { m_rows = 0; m_columns = 0; }
         void shrink_to_fit();
+        void swap(Matrix& other) noexcept;
     private:
         double *m_ptr = nullptr;
         std :: size_t m_rows = 0;
@@ -40,4 +41,5 @@ namespace linalg {
         //поля скрыты от пользователя, работа только через методы. так класс следит за инвариантом(корректностью своих данных)
 
     };
+    void swap(Matrix& a, Matrix& b) noexcept;
 }
