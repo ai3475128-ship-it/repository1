@@ -6,6 +6,8 @@ namespace linalg {
     class Matrix {
     public:
         Matrix() noexcept = default;//дефолтный конструктор(компилятор сам сощдает пустую матрицу); noexcept=без исключений
+        explicit Matrix(std::size_t rows); //explicit не позволяет случиться невозможным преобразованиям(число в матрицу)
+        Matrix(std::size_t rows, std :: size_t columns);
         ~Matrix();
         //публичной для доступности конструктора и деструктора для пользователя
     private:
