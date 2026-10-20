@@ -33,6 +33,15 @@ namespace linalg {
         void clear() noexcept { m_rows = 0; m_columns = 0; }
         void shrink_to_fit();
         void swap(Matrix& other) noexcept;
+        double& operator()(std::size_t row, std::size_t column) noexcept
+        {
+            return m_ptr[row * m_columns + column];
+        }
+
+        const double& operator()(std::size_t row, std::size_t column) const noexcept
+        {
+            return m_ptr[row * m_columns + column];
+        }
     private:
         double *m_ptr = nullptr;
         std :: size_t m_rows = 0;
