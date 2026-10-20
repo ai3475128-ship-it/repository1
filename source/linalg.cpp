@@ -101,6 +101,32 @@ namespace linalg {
         m_ptr = new_ptr;
         m_capacity = n;
     }
+    void Matrix::reshape(std::size_t rows, std::size_t columns)
+    {
+        const std::size_t n = rows * columns;
+        if (n > m_capacity)
+        {
+            double* new_ptr = new double[n];
+            delete[] m_ptr;
+            m_ptr = new_ptr;
+            m_capacity = n;
+        }
+        m_rows = rows;
+        m_columns = columns;
+    }
+
+    void Matrix::shrink_to_fit()
+    {
+        const std::size_t n = size();
+        if (n == m_capacity)
+            return;
+
+        double* new_ptr = n == 0 ? nullptr : new double[n];
+        std::copy(begin(), end(), new_ptr);
+        delete[] m_ptr;
+        m_ptr = new_ptr;
+        m_capacity = n;
+    }
 
 
 }
