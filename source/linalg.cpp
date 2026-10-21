@@ -99,7 +99,7 @@ namespace linalg {
             out = std::copy(row.begin(), row.end(), out);
         }
     }
-
+linalg:: Matrix  a = {{1},{1,2,3}};
     Matrix& Matrix::operator=(const Matrix& other)
     {
         if (this == &other)
@@ -152,6 +152,10 @@ namespace linalg {
     void Matrix::reshape(std::size_t rows, std::size_t columns) // меняем строки и столбцы, если помещается; если нет, перевыделяем память
     {
         const std::size_t n = checked_size(rows, columns); // при переполнении бросит исключение, матрица не изменится
+        if (rows ==0 || columns == 0) {
+            rows = 0;
+            columns = 0;
+        }
         if (n > m_capacity)
         {
             double* new_ptr = new double[n];
@@ -365,42 +369,44 @@ namespace linalg {
         return sum;
     }
 
-    std::size_t Matrix::eliminate_forward(double& scale) noexcept
-    {
-        scale = 1.0; // произведение ведущих элементов, на которые мы делили строки
+    std::size_t Matrix::eliminate_forward(double& scale) noexcept {
+        scale = 1.0;
         std::size_t swaps = 0;
-        std::size_t row = 0; // текущая строка, в которую ставим ведущий элемент
+        std::size_t row = 0;
 
-        for (std::size_t col = 0; col < m_columns && row < m_rows; ++col)
-        {
-            // выбираем строку с наибольшим по модулю элементом в столбце (точность вычислений)
+        for (std::size_t col = 0; col < m_columns && row < m_rows; ++col) {
+            // Изначально предполагаем, что ведущий элемент в текущей строке row
             std::size_t pivot = row;
-            for (std::size_t i = row + 1; i < m_rows; ++i)
-                if (std::fabs(raw(i, col)) > std::fabs(raw(pivot, col)))
+
+            // Ищем ПЕРВЫЙ ненулевой элемент в столбце, начиная с текущей строки
+            for (std::size_t i = row; i < m_rows; ++i) {
+                if (std::fabs(raw(i, col)) >= EPS) {
                     pivot = i;
+                    break; // Нашли первый ненулевой элемент, останавливаем поиск!
+                }
+            }
 
-            if (std::fabs(raw(pivot, col)) < EPS)
-                continue; // весь столбец нулевой, переходим к следующему
+            // Если даже после цикла элемент оказался меньше EPS, значит весь столбец ниже нулевой
+            if (std::fabs(raw(pivot, col)) < EPS) continue;
 
-            if (pivot != row)
-            {
+            // Если нашли строку ниже, меняем их местами
+            if (pivot != row) {
                 for (std::size_t j = 0; j < m_columns; ++j)
                     std::swap(raw(row, j), raw(pivot, j));
                 ++swaps;
             }
 
-            // нормировка: делим строку на ведущий элемент, он становится единицей
+            // Нормировка: делим строку на ведущий элемент
             const double lead = raw(row, col);
-            scale *= lead; // запоминаем делитель, чтобы определитель можно было восстановить
+            scale *= lead;
             raw(row, col) = 1.0;
             for (std::size_t j = col + 1; j < m_columns; ++j)
                 raw(row, j) /= lead;
 
-            // обнуляем элементы под ведущим (ведущий равен 1, множитель = сам элемент)
-            for (std::size_t i = row + 1; i < m_rows; ++i)
-            {
+            // Обнуляем элементы под ведущим
+            for (std::size_t i = row + 1; i < m_rows; ++i) {
                 const double factor = raw(i, col);
-                raw(i, col) = 0;
+                raw(i, col) = 0.0;
                 for (std::size_t j = col + 1; j < m_columns; ++j)
                     raw(i, j) -= factor * raw(row, j);
             }
@@ -408,6 +414,7 @@ namespace linalg {
         }
         return swaps;
     }
+
 
     bool Matrix::is_unit_upper_triangular() const noexcept
     {
@@ -475,31 +482,36 @@ namespace linalg {
     {
         require_not_empty(*this);
 
-        if (!is_unit_upper_triangular()) // если ещё не приведена, сначала делаем прямой ход
-        {
-            double scale;
-            eliminate_forward(scale);
-        }
+        // Безопасно вызываем прямой ход, чтобы гарантировать ступенчатый вид
+        double scale;
+        eliminate_forward(scale);
 
-        // идём снизу вверх; ведущие элементы уже равны 1
+        // Идём снизу вверх; ведущие элементы уже равны 1
         for (std::size_t row = m_rows; row-- > 0;)
         {
             std::size_t lead = 0; // ведущий (первый ненулевой) столбец строки
             while (lead < m_columns && std::fabs(raw(row, lead)) < EPS)
                 ++lead;
+
             if (lead == m_columns)
-                continue; // нулевая строка
+                continue; // вся строка нулевая
 
             for (std::size_t i = 0; i < row; ++i) // обнуляем элементы над ведущим
             {
                 const double factor = raw(i, lead);
-                raw(i, lead) = 0;
+
+                // Если элемент над ведущим уже равен нулю, пропускаем шаг
+                if (std::fabs(factor) < EPS)
+                    continue;
+
+                raw(i, lead) = 0.0;
                 for (std::size_t j = lead + 1; j < m_columns; ++j)
                     raw(i, j) -= factor * raw(row, j);
             }
         }
         return *this;
     }
+
 
     Matrix concatenate(const Matrix& a, const Matrix& b)
     {
