@@ -12,6 +12,8 @@
 namespace linalg {
     namespace
     {
+        constexpr double EPS = 1e-9; // точность сравнения вещественных чисел (0.3*3 != 0.9)
+
         void require_same_size(const Matrix& a, const Matrix& b)
         {
             if (a.rows() != b.rows() || a.columns() != b.columns())
@@ -212,7 +214,7 @@ namespace linalg {
 
     Matrix& Matrix::operator+=(const Matrix& other)
     {
-        require_same_size(*this, other);
+        require_same_size(*this, other); // сначала проверка размеров, потом изменение данных
         for (std::size_t i = 0; i < size(); ++i)
             m_ptr[i] += other.m_ptr[i];
         return *this;
@@ -221,7 +223,7 @@ namespace linalg {
     Matrix operator+(const Matrix& a, const Matrix& b)
     {
         Matrix result(a);
-        result += b;
+        result += b; // бинарный плюс через +=, логика не дублируется
         return result;
     }
 
@@ -256,7 +258,7 @@ namespace linalg {
 
     Matrix operator*(double k, const Matrix& m)
     {
-        return m * k;
+        return m * k; // число слева сводим к числу справа
     }
 
     Matrix operator*(const Matrix& a, const Matrix& b)
@@ -264,7 +266,7 @@ namespace linalg {
         if (a.columns() != b.rows())
             throw std::runtime_error("Matrix: incompatible sizes for multiplication");
 
-        Matrix result(a.rows(), b.columns());
+        Matrix result(a.rows(), b.columns()); // заполнена нулями
         for (std::size_t i = 0; i < a.rows(); ++i)
             for (std::size_t k = 0; k < a.columns(); ++k)
                 for (std::size_t j = 0; j < b.columns(); ++j)
@@ -274,7 +276,7 @@ namespace linalg {
 
     Matrix& Matrix::operator*=(const Matrix& other)
     {
-        Matrix result = *this * other; // считаем во временный объект: размер результата может быть другим
+        Matrix result = *this * other; // размер результата может быть другим, считаем во временный объект
         swap(result);
         return *this;
     }
@@ -284,11 +286,10 @@ namespace linalg {
         if (a.rows() != b.rows() || a.columns() != b.columns())
             return false;
 
-        constexpr double eps = 1e-9; // сравнение double только с точностью (0.3*3 != 0.9)
         const double* pa = a.begin();
         const double* pb = b.begin();
         for (std::size_t i = 0; i < a.size(); ++i)
-            if (std::fabs(pa[i] - pb[i]) > eps)
+            if (std::fabs(pa[i] - pb[i]) > EPS)
                 return false;
         return true;
     }
@@ -296,5 +297,80 @@ namespace linalg {
     bool operator!=(const Matrix& a, const Matrix& b)
     {
         return !(a == b);
+    }
+
+    double Matrix::norm() const noexcept
+    {
+        double sum = 0;
+        for (double x : *this)
+            sum += x * x; // сумма квадратов всех элементов
+        return std::sqrt(sum);
+    }
+
+    double Matrix::trace() const
+    {
+        if (m_rows != m_columns)
+            throw std::runtime_error("Matrix: trace requires a square matrix");
+
+        double sum = 0;
+        for (std::size_t i = 0; i < m_rows; ++i)
+            sum += (*this)(i, i); // сумма элементов главной диагонали
+        return sum;
+    }
+
+    std::size_t Matrix::eliminate_forward() noexcept
+    {
+        std::size_t swaps = 0;
+        std::size_t row = 0; // текущая строка, в которую ставим ведущий элемент
+
+        for (std::size_t col = 0; col < m_columns && row < m_rows; ++col)
+        {
+            // выбираем строку с наибольшим по модулю элементом в столбце (точность вычислений)
+            std::size_t pivot = row;
+            for (std::size_t i = row + 1; i < m_rows; ++i)
+                if (std::fabs((*this)(i, col)) > std::fabs((*this)(pivot, col)))
+                    pivot = i;
+
+            if (std::fabs((*this)(pivot, col)) < EPS)
+                continue; // весь столбец нулевой, переходим к следующему
+
+            if (pivot != row)
+            {
+                for (std::size_t j = 0; j < m_columns; ++j)
+                    std::swap((*this)(row, j), (*this)(pivot, j));
+                ++swaps;
+            }
+
+            // обнуляем элементы под ведущим
+            for (std::size_t i = row + 1; i < m_rows; ++i)
+            {
+                const double factor = (*this)(i, col) / (*this)(row, col);
+                (*this)(i, col) = 0;
+                for (std::size_t j = col + 1; j < m_columns; ++j)
+                    (*this)(i, j) -= factor * (*this)(row, j);
+            }
+            ++row;
+        }
+        return swaps;
+    }
+
+    Matrix& Matrix::gauss_forward() noexcept
+    {
+        eliminate_forward();
+        return *this; // меняем саму матрицу и возвращаем её, а не копию
+    }
+
+    double Matrix::det() const
+    {
+        if (m_rows != m_columns)
+            throw std::runtime_error("Matrix: determinant requires a square matrix");
+
+        Matrix tmp(*this); // метод const, поэтому работаем с копией
+        const std::size_t swaps = tmp.eliminate_forward();
+
+        double result = (swaps % 2 == 0) ? 1.0 : -1.0; // каждая перестановка строк меняет знак
+        for (std::size_t i = 0; i < m_rows; ++i)
+            result *= tmp(i, i); // определитель треугольной матрицы = произведение диагонали
+        return result;
     }
 }

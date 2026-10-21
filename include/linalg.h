@@ -42,6 +42,11 @@ namespace linalg {
         void shrink_to_fit();
         void swap(Matrix& other) noexcept;
 
+        double norm() const noexcept;     // норма Фробениуса
+        double trace() const;             // след, только для квадратной матрицы
+        double det() const;               // определитель, только для квадратной матрицы
+        Matrix& gauss_forward() noexcept; // прямой ход Гаусса, меняет саму матрицу
+
         double& operator()(std::size_t row, std::size_t column) noexcept
         {
             return m_ptr[row * m_columns + column];
@@ -53,6 +58,8 @@ namespace linalg {
         }
 
     private:
+        std::size_t eliminate_forward() noexcept; // прямой ход, возвращает число перестановок строк (нужно для знака определителя)
+
         double* m_ptr = nullptr;
         std::size_t m_rows = 0;
         std::size_t m_columns = 0;
