@@ -1,6 +1,7 @@
 #include "linalg.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
@@ -27,6 +28,14 @@ namespace linalg {
                 result(i, i) = 1;
             return result;
         }
+
+        // размер матрицы rows * columns без переполнения size_t
+        std::size_t checked_size(std::size_t rows, std::size_t columns)
+        {
+            if (columns != 0 && rows > std::numeric_limits<std::size_t>::max() / columns)
+                throw std::runtime_error("Matrix: size is too large");
+            return rows * columns;
+        }
     }
 
     Matrix::Matrix(std::size_t rows):
@@ -35,7 +44,7 @@ namespace linalg {
     }
 
     Matrix::Matrix(std::size_t rows, std::size_t columns):
-    m_ptr(new double[rows * columns]()), //выделяем память и заполняем нулями, а не мусором
+    m_ptr(new double[checked_size(rows, columns)]()), //выделяем память и заполняем нулями; checked_size бросит исключение при переполнении
     m_rows(rows),
     m_columns(columns), //сразу заполняем поля значениями, до входа в тело конструктора
     m_capacity(rows * columns) //выделяем необходимое количество
@@ -92,13 +101,12 @@ namespace linalg {
 
         if (other.size() > m_capacity)
         {
-            double* new_ptr = new double[other.size()];
-            delete[] m_ptr;
-            m_ptr = new_ptr;
-            m_capacity = other.size();
+            Matrix tmp(other); // новая память выделяется во временном объекте
+            swap(tmp);         // забираем её, а старая уйдёт вместе с tmp
+            return *this;
         }
 
-        m_rows = other.m_rows;
+        m_rows = other.m_rows; // памяти хватает: переиспользуем массив
         m_columns = other.m_columns;
         std::copy(other.begin(), other.end(), m_ptr);
         return *this;
@@ -137,7 +145,7 @@ namespace linalg {
 
     void Matrix::reshape(std::size_t rows, std::size_t columns) // меняем строки и столбцы, если помещается; если нет, перевыделяем память
     {
-        const std::size_t n = rows * columns;
+        const std::size_t n = checked_size(rows, columns); // при переполнении бросит исключение, матрица не изменится
         if (n > m_capacity)
         {
             double* new_ptr = new double[n];
