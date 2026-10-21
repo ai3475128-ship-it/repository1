@@ -82,4 +82,11 @@ namespace linalg {
 
     bool operator==(const Matrix& a, const Matrix& b);
     bool operator!=(const Matrix& a, const Matrix& b);
+
+    // функции не меняют аргументы, а возвращают новые матрицы
+    Matrix concatenate(const Matrix& a, const Matrix& b); // приписать b справа от a
+    Matrix transpose(const Matrix& m);
+    Matrix invert(const Matrix& m);
+    Matrix power(const Matrix& m, int n);
+    Matrix solve(const Matrix& A, const Matrix& f);       // решение A * x = f методом Гаусса
 }

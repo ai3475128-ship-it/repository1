@@ -19,6 +19,14 @@ namespace linalg {
             if (a.rows() != b.rows() || a.columns() != b.columns())
                 throw std::runtime_error("Matrix: sizes do not match");
         }
+
+        Matrix identity(std::size_t n) // единичная матрица n x n
+        {
+            Matrix result(n, n); // заполнена нулями
+            for (std::size_t i = 0; i < n; ++i)
+                result(i, i) = 1;
+            return result;
+        }
     }
 
     Matrix::Matrix(std::size_t rows):
@@ -414,5 +422,97 @@ namespace linalg {
             }
         }
         return *this;
+    }
+
+    Matrix concatenate(const Matrix& a, const Matrix& b)
+    {
+        if (a.rows() != b.rows())
+            throw std::runtime_error("Matrix: concatenate requires equal number of rows");
+
+        Matrix result(a.rows(), a.columns() + b.columns());
+        for (std::size_t i = 0; i < a.rows(); ++i)
+        {
+            for (std::size_t j = 0; j < a.columns(); ++j)
+                result(i, j) = a(i, j); // левая часть
+            for (std::size_t j = 0; j < b.columns(); ++j)
+                result(i, a.columns() + j) = b(i, j); // правая часть
+        }
+        return result;
+    }
+
+    Matrix transpose(const Matrix& m)
+    {
+        Matrix result(m.columns(), m.rows());
+        for (std::size_t i = 0; i < m.rows(); ++i)
+            for (std::size_t j = 0; j < m.columns(); ++j)
+                result(j, i) = m(i, j); // строки и столбцы меняются местами
+        return result;
+    }
+
+    Matrix invert(const Matrix& m)
+    {
+        if (m.rows() != m.columns())
+            throw std::runtime_error("Matrix: inverse requires a square matrix");
+
+        const std::size_t n = m.rows();
+        Matrix aug = concatenate(m, identity(n)); // расширенная матрица [A | E]
+        aug.gauss_forward();
+
+        for (std::size_t i = 0; i < n; ++i)
+            if (std::fabs(aug(i, i)) < EPS)
+                throw std::runtime_error("Matrix: matrix is singular"); // нулевой элемент на диагонали: обратной нет
+
+        aug.gauss_backward(); // слева получается E, справа A^-1
+
+        Matrix result(n, n);
+        for (std::size_t i = 0; i < n; ++i)
+            for (std::size_t j = 0; j < n; ++j)
+                result(i, j) = aug(i, n + j);
+        return result;
+    }
+
+    Matrix power(const Matrix& m, int n)
+    {
+        if (m.rows() != m.columns())
+            throw std::runtime_error("Matrix: power requires a square matrix");
+
+        Matrix base = (n < 0) ? invert(m) : m; // отрицательная степень = степень обратной матрицы
+        long long e = n;
+        if (e < 0)
+            e = -e;
+
+        Matrix result = identity(m.rows()); // A^0 = E
+        while (e > 0) // быстрое возведение в степень
+        {
+            if (e % 2 == 1)
+                result *= base;
+            base *= base;
+            e /= 2;
+        }
+        return result;
+    }
+
+    Matrix solve(const Matrix& A, const Matrix& f)
+    {
+        if (A.rows() != A.columns())
+            throw std::runtime_error("Matrix: solve requires a square matrix A");
+        if (A.rows() != f.rows())
+            throw std::runtime_error("Matrix: A and f must have equal number of rows");
+
+        const std::size_t n = A.rows();
+        Matrix aug = concatenate(A, f); // расширенная матрица [A | f]
+        aug.gauss_forward();
+
+        for (std::size_t i = 0; i < n; ++i)
+            if (std::fabs(aug(i, i)) < EPS)
+                throw std::runtime_error("Matrix: system has no unique solution");
+
+        aug.gauss_backward(); // слева E, справа решение
+
+        Matrix result(n, f.columns());
+        for (std::size_t i = 0; i < n; ++i)
+            for (std::size_t j = 0; j < f.columns(); ++j)
+                result(i, j) = aug(i, n + j);
+        return result;
     }
 }
