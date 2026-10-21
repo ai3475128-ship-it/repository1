@@ -373,4 +373,46 @@ namespace linalg {
             result *= tmp(i, i); // определитель треугольной матрицы = произведение диагонали
         return result;
     }
+
+    std::size_t Matrix::rank() const
+    {
+        Matrix tmp(*this); // метод const, поэтому работаем с копией
+        tmp.eliminate_forward();
+
+        std::size_t result = 0;
+        for (std::size_t i = 0; i < tmp.m_rows; ++i)
+            for (std::size_t j = 0; j < tmp.m_columns; ++j)
+                if (std::fabs(tmp(i, j)) > EPS) // строка ненулевая: считаем и переходим к следующей
+                {
+                    ++result;
+                    break;
+                }
+        return result; // ранг = число ненулевых строк ступенчатой матрицы
+    }
+
+    Matrix& Matrix::gauss_backward() noexcept
+    {
+        // идём снизу вверх; считаем, что матрица уже приведена к ступенчатому виду
+        for (std::size_t row = m_rows; row-- > 0;)
+        {
+            std::size_t lead = 0; // ведущий (первый ненулевой) столбец строки
+            while (lead < m_columns && std::fabs((*this)(row, lead)) < EPS)
+                ++lead;
+            if (lead == m_columns)
+                continue; // нулевая строка
+
+            const double pivot = (*this)(row, lead);
+            for (std::size_t j = lead; j < m_columns; ++j)
+                (*this)(row, j) /= pivot; // ведущий элемент становится единицей
+
+            for (std::size_t i = 0; i < row; ++i) // обнуляем элементы над ведущим
+            {
+                const double factor = (*this)(i, lead);
+                (*this)(i, lead) = 0;
+                for (std::size_t j = lead + 1; j < m_columns; ++j)
+                    (*this)(i, j) -= factor * (*this)(row, j);
+            }
+        }
+        return *this;
+    }
 }

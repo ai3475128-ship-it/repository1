@@ -42,10 +42,12 @@ namespace linalg {
         void shrink_to_fit();
         void swap(Matrix& other) noexcept;
 
-        double norm() const noexcept;     // норма Фробениуса
-        double trace() const;             // след, только для квадратной матрицы
-        double det() const;               // определитель, только для квадратной матрицы
-        Matrix& gauss_forward() noexcept; // прямой ход Гаусса, меняет саму матрицу
+        double norm() const noexcept;      // норма Фробениуса
+        double trace() const;              // след, только для квадратной матрицы
+        double det() const;                // определитель, только для квадратной матрицы
+        std::size_t rank() const;          // ранг
+        Matrix& gauss_forward() noexcept;  // прямой ход Гаусса, меняет саму матрицу
+        Matrix& gauss_backward() noexcept; // обратный ход Гаусса, меняет саму матрицу
 
         double& operator()(std::size_t row, std::size_t column) noexcept
         {
