@@ -20,7 +20,7 @@ namespace linalg {
         Matrix& operator+=(const Matrix& other);
         Matrix& operator-=(const Matrix& other);
         Matrix& operator*=(const Matrix& other);
-        Matrix& operator*=(double k) noexcept;
+        Matrix& operator*=(double k);
         ~Matrix();
 
         //публичной для доступности конструктора и деструктора для пользователя
@@ -42,25 +42,31 @@ namespace linalg {
         void shrink_to_fit();
         void swap(Matrix& other) noexcept;
 
-        double norm() const noexcept;      // норма Фробениуса
-        double trace() const;              // след, только для квадратной матрицы
-        double det() const;                // определитель, только для квадратной матрицы
-        std::size_t rank() const;          // ранг
-        Matrix& gauss_forward() noexcept;  // прямой ход Гаусса, меняет саму матрицу
-        Matrix& gauss_backward() noexcept; // обратный ход Гаусса, меняет саму матрицу
+        double norm() const;          // норма Фробениуса, матрица не должна быть пустой
+        double trace() const;         // след, только для квадратной матрицы
+        double det() const;           // определитель, только для квадратной матрицы
+        std::size_t rank() const;     // ранг
+        Matrix& gauss_forward();      // прямой ход с нормировкой диагонали, меняет саму матрицу
+        Matrix& gauss_backward();     // обратный ход, меняет саму матрицу
 
-        double& operator()(std::size_t row, std::size_t column) noexcept
-        {
-            return m_ptr[row * m_columns + column];
-        }
-
-        const double& operator()(std::size_t row, std::size_t column) const noexcept
-        {
-            return m_ptr[row * m_columns + column];
-        }
+        // доступ с проверкой границ: выход за границы или пустая матрица -> std::runtime_error
+        double& operator()(std::size_t row, std::size_t column);
+        const double& operator()(std::size_t row, std::size_t column) const;
 
     private:
-        std::size_t eliminate_forward() noexcept; // прямой ход, возвращает число перестановок строк (нужно для знака определителя)
+        //индексы верны
+        double& raw(std::size_t row, std::size_t column) noexcept
+        {
+            return m_ptr[row * m_columns + column];
+        }
+        const double& raw(std::size_t row, std::size_t column) const noexcept
+        {
+            return m_ptr[row * m_columns + column];
+        }
+
+        // прямой ход с нормировкой; scale = произведение исходных ведущих элементов, возвращает число перестановок строк
+        std::size_t eliminate_forward(double& scale) noexcept;
+        bool is_unit_upper_triangular() const noexcept; // уже верхнетреугольная с единицами на диагонали?
 
         double* m_ptr = nullptr;
         std::size_t m_rows = 0;

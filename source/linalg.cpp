@@ -21,6 +21,12 @@ namespace linalg {
                 throw std::runtime_error("Matrix: sizes do not match");
         }
 
+        void require_not_empty(const Matrix& m) // операции над пустой матрицей не имеют смысла
+        {
+            if (m.empty())
+                throw std::runtime_error("Matrix: matrix is empty");
+        }
+
         Matrix identity(std::size_t n) // единичная матрица n x n
         {
             Matrix result(n, n); // заполнена нулями
@@ -184,6 +190,20 @@ namespace linalg {
     }
     //глобальная функция вызывает метод и не имеет доступа к private, однако может быть вызвана без объекта
 
+    double& Matrix::operator()(std::size_t row, std::size_t column)
+    {
+        if (row >= m_rows || column >= m_columns) // для пустой матрицы условие тоже истинно
+            throw std::runtime_error("Matrix: index out of range");
+        return m_ptr[row * m_columns + column];
+    }
+
+    const double& Matrix::operator()(std::size_t row, std::size_t column) const
+    {
+        if (row >= m_rows || column >= m_columns)
+            throw std::runtime_error("Matrix: index out of range");
+        return m_ptr[row * m_columns + column];
+    }
+
     std::ostream& operator<<(std::ostream& os, const Matrix& m)
     {
         std::vector<std::string> cells(m.size());
@@ -217,11 +237,13 @@ namespace linalg {
 
     Matrix operator+(const Matrix& m)
     {
+        require_not_empty(m);
         return m;
     }
 
     Matrix operator-(const Matrix& m)
     {
+        require_not_empty(m);
         Matrix result(m);
         for (double& x : result)
             x = -x;
@@ -230,7 +252,9 @@ namespace linalg {
 
     Matrix& Matrix::operator+=(const Matrix& other)
     {
-        require_same_size(*this, other); // сначала проверка размеров, потом изменение данных
+        require_not_empty(*this);
+        require_not_empty(other);
+        require_same_size(*this, other); // сначала проверки, потом изменение данных
         for (std::size_t i = 0; i < size(); ++i)
             m_ptr[i] += other.m_ptr[i];
         return *this;
@@ -245,6 +269,8 @@ namespace linalg {
 
     Matrix& Matrix::operator-=(const Matrix& other)
     {
+        require_not_empty(*this);
+        require_not_empty(other);
         require_same_size(*this, other);
         for (std::size_t i = 0; i < size(); ++i)
             m_ptr[i] -= other.m_ptr[i];
@@ -258,8 +284,9 @@ namespace linalg {
         return result;
     }
 
-    Matrix& Matrix::operator*=(double k) noexcept
+    Matrix& Matrix::operator*=(double k)
     {
+        require_not_empty(*this);
         for (double& x : *this)
             x *= k;
         return *this;
@@ -279,6 +306,8 @@ namespace linalg {
 
     Matrix operator*(const Matrix& a, const Matrix& b)
     {
+        require_not_empty(a);
+        require_not_empty(b);
         if (a.columns() != b.rows())
             throw std::runtime_error("Matrix: incompatible sizes for multiplication");
 
@@ -315,8 +344,9 @@ namespace linalg {
         return !(a == b);
     }
 
-    double Matrix::norm() const noexcept
+    double Matrix::norm() const
     {
+        require_not_empty(*this);
         double sum = 0;
         for (double x : *this)
             sum += x * x; // сумма квадратов всех элементов
@@ -325,17 +355,19 @@ namespace linalg {
 
     double Matrix::trace() const
     {
+        require_not_empty(*this);
         if (m_rows != m_columns)
             throw std::runtime_error("Matrix: trace requires a square matrix");
 
         double sum = 0;
         for (std::size_t i = 0; i < m_rows; ++i)
-            sum += (*this)(i, i); // сумма элементов главной диагонали
+            sum += raw(i, i); // сумма элементов главной диагонали
         return sum;
     }
 
-    std::size_t Matrix::eliminate_forward() noexcept
+    std::size_t Matrix::eliminate_forward(double& scale) noexcept
     {
+        scale = 1.0; // произведение ведущих элементов, на которые мы делили строки
         std::size_t swaps = 0;
         std::size_t row = 0; // текущая строка, в которую ставим ведущий элемент
 
@@ -344,61 +376,94 @@ namespace linalg {
             // выбираем строку с наибольшим по модулю элементом в столбце (точность вычислений)
             std::size_t pivot = row;
             for (std::size_t i = row + 1; i < m_rows; ++i)
-                if (std::fabs((*this)(i, col)) > std::fabs((*this)(pivot, col)))
+                if (std::fabs(raw(i, col)) > std::fabs(raw(pivot, col)))
                     pivot = i;
 
-            if (std::fabs((*this)(pivot, col)) < EPS)
+            if (std::fabs(raw(pivot, col)) < EPS)
                 continue; // весь столбец нулевой, переходим к следующему
 
             if (pivot != row)
             {
                 for (std::size_t j = 0; j < m_columns; ++j)
-                    std::swap((*this)(row, j), (*this)(pivot, j));
+                    std::swap(raw(row, j), raw(pivot, j));
                 ++swaps;
             }
 
-            // обнуляем элементы под ведущим
+            // нормировка: делим строку на ведущий элемент, он становится единицей
+            const double lead = raw(row, col);
+            scale *= lead; // запоминаем делитель, чтобы определитель можно было восстановить
+            raw(row, col) = 1.0;
+            for (std::size_t j = col + 1; j < m_columns; ++j)
+                raw(row, j) /= lead;
+
+            // обнуляем элементы под ведущим (ведущий равен 1, множитель = сам элемент)
             for (std::size_t i = row + 1; i < m_rows; ++i)
             {
-                const double factor = (*this)(i, col) / (*this)(row, col);
-                (*this)(i, col) = 0;
+                const double factor = raw(i, col);
+                raw(i, col) = 0;
                 for (std::size_t j = col + 1; j < m_columns; ++j)
-                    (*this)(i, j) -= factor * (*this)(row, j);
+                    raw(i, j) -= factor * raw(row, j);
             }
             ++row;
         }
         return swaps;
     }
 
-    Matrix& Matrix::gauss_forward() noexcept
+    bool Matrix::is_unit_upper_triangular() const noexcept
     {
-        eliminate_forward();
+        const std::size_t n = std::min(m_rows, m_columns);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            if (std::fabs(raw(i, i) - 1.0) > EPS)
+                return false; // на диагонали не единица
+            for (std::size_t j = 0; j < i; ++j)
+                if (std::fabs(raw(i, j)) > EPS)
+                    return false; // под диагональю не ноль
+        }
+        for (std::size_t i = n; i < m_rows; ++i) // лишние строки ниже должны быть нулевыми
+            for (std::size_t j = 0; j < m_columns; ++j)
+                if (std::fabs(raw(i, j)) > EPS)
+                    return false;
+        return true;
+    }
+
+    Matrix& Matrix::gauss_forward()
+    {
+        require_not_empty(*this);
+        double scale;
+        eliminate_forward(scale);
         return *this; // меняем саму матрицу и возвращаем её, а не копию
     }
 
     double Matrix::det() const
     {
+        require_not_empty(*this);
         if (m_rows != m_columns)
             throw std::runtime_error("Matrix: determinant requires a square matrix");
 
         Matrix tmp(*this); // метод const, поэтому работаем с копией
-        const std::size_t swaps = tmp.eliminate_forward();
+        double scale;
+        const std::size_t swaps = tmp.eliminate_forward(scale);
 
-        double result = (swaps % 2 == 0) ? 1.0 : -1.0; // каждая перестановка строк меняет знак
+        // нормировка делила строки на ведущие элементы, поэтому умножаем обратно (scale);
+        // каждая перестановка строк меняет знак
+        double result = (swaps % 2 == 0) ? scale : -scale;
         for (std::size_t i = 0; i < m_rows; ++i)
-            result *= tmp(i, i); // определитель треугольной матрицы = произведение диагонали
+            result *= tmp.raw(i, i); // диагональ: единицы (или ноль у вырожденной матрицы)
         return result;
     }
 
     std::size_t Matrix::rank() const
     {
+        require_not_empty(*this);
         Matrix tmp(*this); // метод const, поэтому работаем с копией
-        tmp.eliminate_forward();
+        double scale;
+        tmp.eliminate_forward(scale);
 
         std::size_t result = 0;
         for (std::size_t i = 0; i < tmp.m_rows; ++i)
             for (std::size_t j = 0; j < tmp.m_columns; ++j)
-                if (std::fabs(tmp(i, j)) > EPS) // строка ненулевая: считаем и переходим к следующей
+                if (std::fabs(tmp.raw(i, j)) > EPS) // строка ненулевая: считаем и переходим к следующей
                 {
                     ++result;
                     break;
@@ -406,27 +471,31 @@ namespace linalg {
         return result; // ранг = число ненулевых строк ступенчатой матрицы
     }
 
-    Matrix& Matrix::gauss_backward() noexcept
+    Matrix& Matrix::gauss_backward()
     {
-        // идём снизу вверх; считаем, что матрица уже приведена к ступенчатому виду
+        require_not_empty(*this);
+
+        if (!is_unit_upper_triangular()) // если ещё не приведена, сначала делаем прямой ход
+        {
+            double scale;
+            eliminate_forward(scale);
+        }
+
+        // идём снизу вверх; ведущие элементы уже равны 1
         for (std::size_t row = m_rows; row-- > 0;)
         {
             std::size_t lead = 0; // ведущий (первый ненулевой) столбец строки
-            while (lead < m_columns && std::fabs((*this)(row, lead)) < EPS)
+            while (lead < m_columns && std::fabs(raw(row, lead)) < EPS)
                 ++lead;
             if (lead == m_columns)
                 continue; // нулевая строка
 
-            const double pivot = (*this)(row, lead);
-            for (std::size_t j = lead; j < m_columns; ++j)
-                (*this)(row, j) /= pivot; // ведущий элемент становится единицей
-
             for (std::size_t i = 0; i < row; ++i) // обнуляем элементы над ведущим
             {
-                const double factor = (*this)(i, lead);
-                (*this)(i, lead) = 0;
+                const double factor = raw(i, lead);
+                raw(i, lead) = 0;
                 for (std::size_t j = lead + 1; j < m_columns; ++j)
-                    (*this)(i, j) -= factor * (*this)(row, j);
+                    raw(i, j) -= factor * raw(row, j);
             }
         }
         return *this;
@@ -434,6 +503,8 @@ namespace linalg {
 
     Matrix concatenate(const Matrix& a, const Matrix& b)
     {
+        require_not_empty(a);
+        require_not_empty(b);
         if (a.rows() != b.rows())
             throw std::runtime_error("Matrix: concatenate requires equal number of rows");
 
@@ -450,6 +521,7 @@ namespace linalg {
 
     Matrix transpose(const Matrix& m)
     {
+        require_not_empty(m);
         Matrix result(m.columns(), m.rows());
         for (std::size_t i = 0; i < m.rows(); ++i)
             for (std::size_t j = 0; j < m.columns(); ++j)
@@ -459,6 +531,7 @@ namespace linalg {
 
     Matrix invert(const Matrix& m)
     {
+        require_not_empty(m);
         if (m.rows() != m.columns())
             throw std::runtime_error("Matrix: inverse requires a square matrix");
 
@@ -481,6 +554,7 @@ namespace linalg {
 
     Matrix power(const Matrix& m, int n)
     {
+        require_not_empty(m);
         if (m.rows() != m.columns())
             throw std::runtime_error("Matrix: power requires a square matrix");
 
@@ -502,6 +576,8 @@ namespace linalg {
 
     Matrix solve(const Matrix& A, const Matrix& f)
     {
+        require_not_empty(A);
+        require_not_empty(f);
         if (A.rows() != A.columns())
             throw std::runtime_error("Matrix: solve requires a square matrix A");
         if (A.rows() != f.rows())
